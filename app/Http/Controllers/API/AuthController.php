@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Hash;
+use Laravel\Sanctum\Sanctum;
 use Laravel\Sanctum\PersonalAccessToken;
-use App\Models\User;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Facades\DB;
+use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -16,14 +18,12 @@ class AuthController extends Controller
     public function register(Request $request) {
 
         $validator = Validator::make($request->all(),[
-            'name' => 'required',
-            'email' => 'required|email|unique:users',
+            'user_name' => 'required|unique:users',
             'password' => 'required|min:3'
         ],[
-            'name.required' => 'ກະລຸນາປ້ອນຊື່ກ່ອນ',
-            'email.required' => 'ກະລຸນາປ້ອນອີເມລ',
-            'email.email' => 'ຮູບແບບອີເມລບໍ່ຖືກຕ້ອງ',
-            'email.unique' => 'ອີເມລນີ້ມີຜູ້ໃຊ້ງານໃນລະບົບແລ້ວ',
+            'user_name.required' => 'ກະລຸນາປ້ອນຊື່ກ່ອນ',
+            'user_name.user_name' => 'ຮູບແບບຂື່ຜູ້ໃຊ້ບໍ່ຖືກຕ້ອງ',
+            'user_name.unique' => 'ອີເມລນີ້ມີຜູ້ໃຊ້ງານໃນລະບົບແລ້ວ',
             'password.required' => 'ກະລຸນາປ້ອນລະຫັດຜ່ານກ່ອນ',
             'password.min' => 'ກະລຸນາປ້ອນລະຫັດຢ່າງໜ້ອຍ 3 ຕົວ',
         ]);
@@ -37,20 +37,18 @@ class AuthController extends Controller
         }
 
         //เพิ่ม user ใหม่ 
-        //QueryBuilder
+        // QueryBuilder
 
-        // $user = DB::table('users')->insert([
-        //     'name' => $request->name,
-        //     'email' => $request->email,
-        //     'password' => Hash::make($request->password), 
-        // ]);
+        $user = DB::table('users')->insert([
+            'user_name' => $request->user_name,
+            'password' => Hash::make($request->password)
+        ]);
         
-        //ORM
-        $user = new User();
-        $user->name = $request->name;
-        $user->email = $request->email;
-        $user->password = Hash::make($request->password); 
-        $user->save();
+        // //ORM
+        // $user = new User();
+        // $user->username = $request->username;
+        // $user->password = Hash::make($request->password); 
+        // $user->save();
 
         return response()->json([
             'message' => 'ສະໝັກສະມາຊິກສຳເລັດ'
@@ -61,15 +59,14 @@ class AuthController extends Controller
     public function login(Request $request) {
 
         $validator = Validator::make($request->all(),[
-            'email' => 'required|email',
-            'password' => 'required|min:3',
-            'device_name' => 'required'
+            'user_name' => 'required',
+            'password' => 'required|min:3'
         ],[
-            'email.required' => 'ກະລຸນາປ້ອນອີເມລ',
-            'email.email' => 'ຮູບແບບອີເມລບໍ່ຖືກຕ້ອງ',
+            'user_name.required' => 'ກະລຸນາປ້ອນຊື່ຜູ້ໃຊ້ກ່ອນ',
+            'user_name.user_name' => 'ຮູບແບບຊື່ຜູ້ໃຊ້ບໍ່ຖືກຕ້ອງ',
+            'user_name.unique' => 'ອີເມລນີ້ມີຜູ້ໃຊ້ງານໃນລະບົບແລ້ວ',
             'password.required' => 'ກະລຸນາປ້ອນລະຫັດຜ່ານກ່ອນ',
             'password.min' => 'ກະລຸນາປ້ອນລະຫັດຢ່າງໜ້ອຍ 3 ຕົວ',
-            'device_name.required' => 'ກະລຸນາເລືອກອຸປະກອນ',
         ]);
 
         if ($validator->fails()) {
@@ -81,16 +78,15 @@ class AuthController extends Controller
         }
 
         //ກວດ email ແລະ password ວ່າຖືກຕ້ອງບໍ
-        $user = User::where('email', $request->email)->first();
+        $user = User::where('user_name', $request->user_name)->first();
 
         if (! $user || ! Hash::check($request->password, $user->password)) {
             throw ValidationException::withMessages([
-                'email' => ['ອີເມລຫຼືລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ'],
+                'user_name' => ['ອີເມລຫຼືລະຫັດຜ່ານບໍ່ຖືກຕ້ອງ'],
             ]);
         }
-    
-        $token = $user->createToken($request->device_name)->plainTextToken;
 
+        $token = $user->createToken('token_name')->plainTextToken;
         $personal_token = PersonalAccessToken::findToken($token);
 
         return response()->json([
@@ -112,18 +108,4 @@ class AuthController extends Controller
             'message' => 'ອອກຈາກລະບົບສຳເລັດ'
         ], 200);
     }
-
-    //get profile
-    public function me(Request $request) {
-        $user = $request->user();
-
-        return response()->json([
-            'user' => [
-                'id' => $user->id,
-                'email' => $user->email,
-            ]
-        ], 200);
-    }
-
-
 }

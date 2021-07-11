@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\API\AuthController;
 use App\Http\Controllers\API\RegisterController;
+use App\Http\Controllers\API\RoleController;
+use App\Http\Controllers\API\UserTypeController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,5 +31,9 @@ Route::post('/auth/logout',[AuthController::class,'logout'])->middleware('auth:s
 
 //get user profile
 Route::get('/auth/me',[AuthController::class, 'me'])->middleware('auth:sanctum');
+
+//Role
+Route::apiResource('userType', UserTypeController::class);
+Route::get('/search/userType',[UserTypeController::class, 'search'])->middleware('auth:sanctum');
 
 
